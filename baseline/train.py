@@ -1,12 +1,8 @@
 from __future__ import division, print_function, absolute_import
-
 import os
-
 from keras.callbacks import ModelCheckpoint
-
 import utils.cuda_util
 from random import shuffle
-
 import numpy as np
 import tensorflow as tf
 from keras.applications.resnet50 import ResNet50
@@ -20,9 +16,7 @@ from keras.optimizers import SGD, Adagrad
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
-
 from baseline.img_utils import get_random_eraser, crop_generator
-
 
 def load_mix_data(LIST, TRAIN):
     images, labels = [], []
