@@ -137,8 +137,7 @@ def softmax_model_pretrain(train_list, train_dir, class_count, target_model_path
     )
     net.save(target_model_path)
 
-
-def softmax_pretrain_on_dataset(source, project_path='/home/cwh/coding/rank-reid', dataset_parent='/home/cwh/coding'):
+def softmax_pretrain_on_dataset(source, project_path='f:/reid/rank-reid', dataset_parent='F:/reid/dataset'):
     if source == 'market':
         train_list = project_path + '/dataset/market_train.list'
         train_dir = dataset_parent + '/Market-1501/train'
@@ -174,7 +173,7 @@ def softmax_pretrain_on_dataset(source, project_path='/home/cwh/coding/rank-reid
         class_count = -1
     softmax_model_pretrain(train_list, train_dir, class_count, '../pretrain/' + source + '_softmax_pretrain.h5')
 
-
+# 使用source数据集数据来预训练Resnet50网络
 if __name__ == '__main__':
     # sources = ['market', 'grid', 'cuhk', 'viper']
     sources = ['market']
