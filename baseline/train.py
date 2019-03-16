@@ -18,6 +18,18 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
 from baseline.img_utils import get_random_eraser, crop_generator
 import matplotlib.pyplot as plt
+from keras.callbacks import TensorBoard
+import keras
+import pandas as pd
+
+class LossHistory(keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+        self.val_loss = []
+    def on_epoch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        self.val_loss.append(logs.get('val_loss'))
+
 
 def load_mix_data(LIST, TRAIN):
     images, labels = [], []
@@ -123,14 +135,20 @@ def softmax_model_pretrain(train_list, train_dir, class_count, target_model_path
 
     save_best = ModelCheckpoint(target_model_path, monitor='val_loss', save_best_only=False, mode='auto')
     net.compile(optimizer=SGD(lr=0.001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+    his = LossHistory()
     history = net.fit_generator(
         train_datagen,
         steps_per_epoch=train_cnt/20 * 19 / batch_size + 1, epochs=40,
         validation_data=val_datagen,
         validation_steps=train_cnt/20/batch_size+1,
-        callbacks=[save_best],
+        # callbacks=[save_best, TensorBoard(log_dir='.my_log_dir')],
+        callbacks=[save_best, his],
         verbose=1
     )
+
+    loss_df = pd.DataFrame({'train_loss': his.losses, 'val_loss':his.val_loss})
+    loss_df.to_csv('loss_record.csv', index=True)
+
     plt.figure()
     plt.plot(history.history['loss'], label='train_loss')
     plt.plot(history.history['val_loss'], label='val_loss')
