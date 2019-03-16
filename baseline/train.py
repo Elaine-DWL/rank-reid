@@ -17,6 +17,7 @@ from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
 from baseline.img_utils import get_random_eraser, crop_generator
+import matplotlib.pyplot as plt
 
 def load_mix_data(LIST, TRAIN):
     images, labels = [], []
@@ -75,7 +76,7 @@ def load_data(LIST, TRAIN):
             labels.append(label_cnt)
 
     img_cnt = len(labels)
-    shuffle_idxes = range(img_cnt)
+    shuffle_idxes = list(range(img_cnt))
     shuffle(shuffle_idxes)
     shuffle_imgs = list()
     shuffle_labels = list()
@@ -89,9 +90,10 @@ def load_data(LIST, TRAIN):
 
 def softmax_model_pretrain(train_list, train_dir, class_count, target_model_path):
     images, labels = load_data(train_list, train_dir)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'# 使用第一块gpu
+    # config = tf.ConfigProto(log_device_placement=True) # 会一直在控制台输出gpu/cpu信息
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-
     sess = tf.Session(config=config)
     set_session(sess)
 
@@ -104,8 +106,8 @@ def softmax_model_pretrain(train_list, train_dir, class_count, target_model_path
     x = Dense(class_count, activation='softmax', name='fc8', kernel_initializer=RandomNormal(mean=0.0, stddev=0.001))(x)
     net = Model(inputs=[base_model.input], outputs=[x])
 
-    for layer in net.layers:
-        layer.trainable = True
+    for layer in base_model.layers:
+        layer.trainable = False
 
     # pretrain
     batch_size = 16
@@ -119,22 +121,30 @@ def softmax_model_pretrain(train_list, train_dir, class_count, target_model_path
     #     images[:train_cnt//10*9], labels[:train_cnt//10*9], batch_size=batch_size)
     val_datagen = ImageDataGenerator(horizontal_flip=0.5).flow(images[train_cnt//10*9:], labels[train_cnt//10*9:], batch_size=batch_size)
 
-
-    save_best = ModelCheckpoint(target_model_path, monitor='val_acc', save_best_only=True)
+    save_best = ModelCheckpoint(target_model_path, monitor='val_loss', save_best_only=False, mode='auto')
     net.compile(optimizer=SGD(lr=0.001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-    net.fit_generator(
+    history = net.fit_generator(
         train_datagen,
         steps_per_epoch=train_cnt/20 * 19 / batch_size + 1, epochs=40,
         validation_data=val_datagen,
         validation_steps=train_cnt/20/batch_size+1,
-        callbacks=[save_best]
+        callbacks=[save_best],
+        verbose=1
     )
+    plt.figure()
+    plt.plot(history.history['loss'], label='train_loss')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.legend(loc='upper right')
+    plt.show()
     net.save(target_model_path)
 
-def softmax_pretrain_on_dataset(source, project_path='f:/reid/rank-reid', dataset_parent='F:/reid/dataset'):
+
+def softmax_pretrain_on_dataset(source, project_path='p:/person_reid/rank-reid', dataset_parent='p:/person_reid/dataset'):
     if source == 'market':
         train_list = project_path + '/dataset/market_train.list'
-        train_dir = dataset_parent + '/Market-1501/train'
+        train_dir = dataset_parent + '/Market-1501/bounding_box_train'
         class_count = 751
     elif source == 'grid':
         train_list = project_path + '/dataset/grid_train.list'
